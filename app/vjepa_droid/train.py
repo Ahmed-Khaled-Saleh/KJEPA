@@ -7,15 +7,15 @@
 
 import os
 
-# -- FOR DISTRIBUTED TRAINING ENSURE ONLY 1 DEVICE VISIBLE PER PROCESS
-try:
-    # -- WARNING: IF DOING DISTRIBUTED TRAINING ON A NON-SLURM CLUSTER, MAKE
-    # --          SURE TO UPDATE THIS TO GET LOCAL-RANK ON NODE, OR ENSURE
-    # --          THAT YOUR JOBS ARE LAUNCHED WITH ONLY 1 DEVICE VISIBLE
-    # --          TO EACH PROCESS
-    os.environ["CUDA_VISIBLE_DEVICES"] = os.environ["SLURM_LOCALID"]
-except Exception:
-    pass
+# # -- FOR DISTRIBUTED TRAINING ENSURE ONLY 1 DEVICE VISIBLE PER PROCESS
+# try:
+#     # -- WARNING: IF DOING DISTRIBUTED TRAINING ON A NON-SLURM CLUSTER, MAKE
+#     # --          SURE TO UPDATE THIS TO GET LOCAL-RANK ON NODE, OR ENSURE
+#     # --          THAT YOUR JOBS ARE LAUNCHED WITH ONLY 1 DEVICE VISIBLE
+#     # --          TO EACH PROCESS
+#     os.environ["CUDA_VISIBLE_DEVICES"] = os.environ["SLURM_LOCALID"]
+# except Exception:
+#     pass
 
 import copy
 import gc
@@ -159,15 +159,20 @@ def main(args, resume_preempt=False):
         pass
 
     # -- init torch distributed backend
-    world_size, rank = init_distributed()
+    world_size, rank, local_rank = init_distributed()
     logger.info(f"Initialized (rank/world-size) {rank}/{world_size}")
+    
 
     # -- set device
     if not torch.cuda.is_available():
         device = torch.device("cpu")
     else:
-        device = torch.device("cuda:0")
-        torch.cuda.set_device(device)
+        # device = torch.device("cuda:0")
+        # torch.cuda.set_device(device)
+        # assume init_distributed already ran and returned local_rank
+        device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
+        torch.cuda.set_device(local_rank) if torch.cuda.is_available() else None
+
 
     # -- log/checkpointing paths
     log_file = os.path.join(folder, f"log_r{rank}.csv")

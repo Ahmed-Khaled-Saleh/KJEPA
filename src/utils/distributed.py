@@ -9,46 +9,81 @@ from pathlib import Path
 import torch
 import torch.distributed as dist
 
+import subprocess
+
+import logging
+
 from src.utils.logging import get_logger
 
 logger = get_logger()
 
 
-def init_distributed(port=37129, rank_and_world_size=(None, None)):
-    # try to set all environment variables to avoid triggering a segfault
-    # environment variables can be reallocated during the execution of torch.distributed.init_process_group
-    # the idea is a race condition may trigger if init_progress_group is modifying an environment variable at
-    # the same time as Python, so we try to set all environs before initializing distributed
+
+# logger = logging.getLogger(__name__)
+
+def init_distributed(port=29500, rank_and_world_size=(None, None)):
+    # tmpdir trick for some clusters
     if "SLURM_JOB_ID" in os.environ:
-        # Use the slurm_tmpdir (if it exists) instead of /tmp
         tmpdir = Path(f"/scratch/slurm_tmpdir/{os.environ['SLURM_JOB_ID']}")
         if tmpdir.exists():
             os.environ["TMPDIR"] = str(tmpdir)
 
     if dist.is_available() and dist.is_initialized():
-        return dist.get_world_size(), dist.get_rank()
+        return dist.get_world_size(), dist.get_rank(), int(os.environ.get("LOCAL_RANK", 0))
 
     rank, world_size = rank_and_world_size
-    os.environ["MASTER_ADDR"] = "localhost"
+    master_addr = os.environ.get("MASTER_ADDR", None)
+    master_port = os.environ.get("MASTER_PORT", str(port))
 
-    if (rank is None) or (world_size is None):
+    # Prefer torchrun env vars if present
+    if "RANK" in os.environ and "WORLD_SIZE" in os.environ:
+        rank = int(os.environ["RANK"])
+        world_size = int(os.environ["WORLD_SIZE"])
+        local_rank = int(os.environ.get("LOCAL_RANK", 0))
+
+    # Else SLURM
+    elif "SLURM_PROCID" in os.environ:
+        rank = int(os.environ["SLURM_PROCID"])
+        world_size = int(os.environ["SLURM_NTASKS"])
+        local_rank = int(os.environ.get("SLURM_LOCALID", 0))
+        # pick first node in allocation for rendezvous if MASTER_ADDR not set
+        if master_addr is None and "SLURM_NODELIST" in os.environ:
+            try:
+                hostnames = subprocess.check_output(
+                    ["scontrol", "show", "hostnames", os.environ["SLURM_NODELIST"]]
+                ).decode().split()
+                master_addr = hostnames[0]
+            except Exception:
+                master_addr = os.environ.get("HOSTNAME", "127.0.0.1")
+    # Else manual mode (you passed rank_and_world_size)
+    elif (rank is not None) and (world_size is not None):
+        local_rank = 0
+        master_addr = master_addr or "127.0.0.1"
+    else:
+        # single-process fallback
+        logger.info("No distributed env detected — running single-process")
+        return 1, 0, 0
+
+    # Ensure MASTER_ADDR/PORT are set and use IPv4 to avoid errno 97
+    os.environ.setdefault("MASTER_ADDR", master_addr or "127.0.0.1")
+    os.environ.setdefault("MASTER_PORT", master_port)
+
+    # Set CUDA device according to local_rank (ordinal in visible devices)
+    if torch.cuda.is_available():
         try:
-            world_size = int(os.environ["SLURM_NTASKS"])
-            rank = int(os.environ["SLURM_PROCID"])
-            os.environ["MASTER_ADDR"] = os.environ["HOSTNAME"]
-        except Exception:
-            logger.info("SLURM vars not set (distributed training not available)")
-            world_size, rank = 1, 0
-            return world_size, rank
+            torch.cuda.set_device(local_rank)
+        except Exception as e:
+            logger.error(f"Failed to set CUDA device {local_rank}. CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}. Error: {e}")
+            raise
 
-    try:
-        os.environ["MASTER_PORT"] = str(port)
-        torch.distributed.init_process_group(backend="nccl", world_size=world_size, rank=rank)
-    except Exception as e:
-        world_size, rank = 1, 0
-        logger.info(f"Rank: {rank}. Distributed training not available {e}")
+    # Initialize process group if needed
+    if world_size > 1:
+        dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+        logger.info(f"Initialized DDP: rank={rank} world_size={world_size} local_rank={local_rank}")
+    else:
+        logger.info("Single process (world_size <= 1) — skipping init_process_group")
 
-    return world_size, rank
+    return world_size, rank, local_rank
 
 
 class AllGather(torch.autograd.Function):
