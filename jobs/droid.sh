@@ -4,10 +4,9 @@
 #SBATCH --partition=gpu
 #SBATCH --time=5:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=8        
 #SBATCH --cpus-per-task=10
-#SBATCH --gres=gpu:v100:4
-#SBATCH --mem=320G                     
+#SBATCH --mem=320G
+#SBATCH --gres=gpu:v100:2                     
 #SBATCH --output=./logs/err_%j_%x_%N.out
 #SBATCH --error=./logs/err_%j_%x_%N.err
 
