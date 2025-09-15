@@ -1,7 +1,6 @@
 #!/bin/bash
 #SBATCH --account=project_2009050
 #SBATCH --job-name=vitg16_train
-#SBATCH --qos=high
 #SBATCH --partition=gpu
 #SBATCH --time=5:00:00
 #SBATCH --nodes=1
