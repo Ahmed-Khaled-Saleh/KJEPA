@@ -18,7 +18,7 @@ module --force purge
 module load pytorch
 
 # Activate python environment
-source /scratch/project_2009050/venvs/torchy/bin/activate
+source /scratch/project_2009050/torchy/bin/activate
 cd /projappl/project_2009050/KJEPA
 
 # Launch with torchrun
