@@ -22,7 +22,7 @@ source /scratch/project_2009050/torchy/bin/activate
 cd /projappl/project_2009050/KJEPA
 
 # Launch with torchrun
-srun torchrun \
+srun torchrun --standalone \
   --nnodes=1 \
   --nproc_per_node=2  \
   app/main.py \
