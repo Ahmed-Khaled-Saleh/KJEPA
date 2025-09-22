@@ -5,7 +5,7 @@ mem_per_gpu: 30G
 nodes: 1
 tasks_per_node: 2
 data:
-  batch_size: 16
+  batch_size: 8
   camera_views:
   - left_mp4_path
   crop_size: 256
