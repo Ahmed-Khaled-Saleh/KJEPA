@@ -20,6 +20,8 @@ module load pytorch
 # Activate python environment
 source /scratch/project_2009050/torchy/bin/activate
 cd /projappl/project_2009050/KJEPA
+git fetch
+git pull
 
 # Launch with torchrun
 srun torchrun --standalone \
