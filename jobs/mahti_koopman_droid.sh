@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --account=project_2009050
 #SBATCH --job-name=vitg16_train
-#SBATCH --partition=gpu
+#SBATCH --partition=gpusmall
 #SBATCH --time=5:00:00
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=320G
-#SBATCH --gres=gpu:v100:2                     
+#SBATCH --gres=gpu:a100:2                     
 #SBATCH --output=./logs/err_%j_%x_%N.out
 #SBATCH --error=./logs/err_%j_%x_%N.err
 
@@ -18,7 +18,7 @@ module --force purge
 module load pytorch
 
 # Activate python environment
-source /scratch/project_2009050/torchy/bin/activate
+source /projappl/project_2009050/mytorch/bin/activate
 cd /projappl/project_2009050/KJEPA
 # git fetch
 # git pull
@@ -28,4 +28,4 @@ srun torchrun --standalone \
   --nnodes=1 \
   --nproc_per_node=2  \
   app/main.py \
-  --fname configs/train/vitg16/droid-256px-8f.yaml
+  --fname configs/train/vitg16/koopman-droid-256px-8f.yaml
