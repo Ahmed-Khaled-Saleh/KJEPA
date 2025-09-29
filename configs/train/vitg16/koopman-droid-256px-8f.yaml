@@ -1,4 +1,4 @@
-app: vjepa_droid
+app: vjepa_koopman
 cpus_per_task: 10
 folder: /scratch/project_2009050/expirements/
 mem_per_gpu: 30G
