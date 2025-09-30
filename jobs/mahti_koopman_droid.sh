@@ -26,6 +26,7 @@ cd /projappl/project_2009050/KJEPA
 # Launch with torchrun
 srun torchrun --standalone \
   --nnodes=1 \
-  --nproc_per_node=2  \
-  app/main.py \
+  --nproc_per_node=2 \
+  -m app.main \
   --fname configs/train/vitg16/koopman-droid-256px-8f.yaml
+
