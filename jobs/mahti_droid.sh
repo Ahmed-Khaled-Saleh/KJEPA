@@ -27,5 +27,5 @@ cd /projappl/project_2009050/KJEPA
 srun torchrun --standalone \
   --nnodes=1 \
   --nproc_per_node=2  \
-  app/main.py \
+  -m app.main \
   --fname configs/train/vitg16/droid-256px-8f.yaml
