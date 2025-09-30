@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+# print current directory
+print(f"Current directory: {os.getcwd()}")
 from app.scaffold import main as app_main
 from src.utils.distributed import init_distributed
 from src.utils.logging import get_logger
